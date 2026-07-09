@@ -1,0 +1,128 @@
+:root {
+  --shade-opacity: 0.06;
+  --night-opacity: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #08140d;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+body[data-weather="cloudy"] {
+  --shade-opacity: 0.14;
+}
+
+body[data-weather="rain"] {
+  --shade-opacity: 0.24;
+}
+
+body[data-weather="storm"] {
+  --shade-opacity: 0.36;
+}
+
+body[data-weather="fog"] {
+  --shade-opacity: 0.3;
+}
+
+body[data-daylight="night"] {
+  --night-opacity: 0.58;
+}
+
+.wallpaper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  color: rgba(255, 255, 255, 0.95);
+  background: #08140d;
+}
+
+.background,
+.shade,
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.background {
+  z-index: 0;
+  background-image: url("assets/rural-bengal-field-clear-sky.png");
+  background-position: center;
+  background-size: cover;
+}
+
+.shade {
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(255, 235, 180, 0.1), transparent 42%),
+    linear-gradient(180deg, rgba(0, 0, 0, var(--shade-opacity)), rgba(0, 0, 0, calc(var(--shade-opacity) * 0.55))),
+    rgba(8, 16, 31, var(--night-opacity));
+}
+
+.scene-canvas {
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+}
+
+.weather-panel {
+  position: absolute;
+  z-index: 8;
+  left: 18px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 212px;
+  max-width: min(390px, calc(100vw - 36px));
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(7, 24, 16, 0.82);
+}
+
+.weather-temp {
+  min-width: 60px;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 0.95;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.weather-meta {
+  min-width: 0;
+  font-size: clamp(0.82rem, 1.2vw, 0.98rem);
+  line-height: 1.32;
+}
+
+.weather-meta > div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#condition {
+  font-weight: 620;
+}
+
+#place {
+  opacity: 0.8;
+}
+
+@media (max-width: 680px) {
+  .weather-panel {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    max-width: none;
+  }
+}

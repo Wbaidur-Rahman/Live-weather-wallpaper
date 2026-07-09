@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Bengal Weather Wallpaper Lite</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body data-weather="clear" data-daylight="day">
+    <main class="wallpaper" aria-label="Live weather wallpaper">
+      <div class="background" aria-hidden="true"></div>
+      <div class="shade" aria-hidden="true"></div>
+      <canvas class="scene-canvas" id="scene-canvas" aria-hidden="true"></canvas>
+      <section class="weather-panel" aria-live="polite">
+        <div class="weather-temp" id="temperature">--</div>
+        <div class="weather-meta">
+          <div id="condition">Loading weather</div>
+          <div id="place">Dhaka, Bangladesh</div>
+        </div>
+      </section>
+    </main>
+    <script src="weather-wallpaper.js"></script>
+    <script src="scene-effects.js"></script>
+  </body>
+</html>

@@ -1,0 +1,22 @@
+# Local render/debug screenshots generated during tuning.
+/*.png
+!/render-check.png
+
+# Original cloud source pack is large; processed runtime sprites are committed.
+/assets/clouds/source/
+/assets/clouds/fx_cloudalphas.zip
+
+# Lively/browser/runtime local state.
+*.log
+*.tmp
+*.cache
+Thumbs.db
+Desktop.ini
+
+# Python helper script cache.
+__pycache__/
+*.py[cod]
+
+# Editor folders.
+.vscode/
+.idea/

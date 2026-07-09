@@ -1,0 +1,19 @@
+{
+  "AppVersion": "2.1.0.8",
+  "Title": "Bengal Weather Wallpaper Lite",
+  "Thumbnail": "render-check.png",
+  "Preview": null,
+  "Desc": "Low-power live rural Bengal weather wallpaper with real-time Open-Meteo data.",
+  "Author": "bdcom",
+  "License": "Personal use",
+  "Contact": "",
+  "Type": 1,
+  "FileName": "index.html",
+  "Arguments": "",
+  "Tags": [
+    "weather",
+    "bengal",
+    "web"
+  ],
+  "IsAbsolutePath": false
+}
