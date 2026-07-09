@@ -428,11 +428,83 @@
     const rainStrength = getRainStrength();
     const gustStrength = weather.scene === "storm" ? 0.9 : weather.scene === "rain" ? 0.72 : 0.46;
 
+    drawPaddyWindWaves(time, fieldTop, fieldHeight, wind, windVector, rainStrength);
     drawFieldGustBands(time, fieldTop, fieldHeight, wind, windVector, gustStrength);
     if (rainStrength > 0.02) {
       drawWetFieldSheen(time, fieldTop, fieldHeight, windVector, rainStrength);
     }
     drawForegroundGrassSway(time, wind, windVector, rainStrength);
+  }
+
+  function drawPaddyWindWaves(time, fieldTop, fieldHeight, wind, windVector, rainStrength) {
+    const windCurve = clamp(wind / 32, 0.12, 1.55);
+    const waveCount = weather.scene === "storm" ? 9 : weather.scene === "rain" ? 8 : 7;
+    const direction = Math.sign(windVector.x || 1);
+    const travel = width * 1.45;
+
+    ctx.save();
+    ctx.globalCompositeOperation = weather.scene === "storm" ? "multiply" : "soft-light";
+
+    for (let i = 0; i < waveCount; i += 1) {
+      const t = i / Math.max(1, waveCount - 1);
+      const closeBoost = t * t;
+      const y = fieldTop + fieldHeight * (0.1 + t * 0.86) + Math.sin(time * (0.45 + windCurve * 0.22) + i * 1.3) * height * (0.004 + closeBoost * 0.012);
+      const waveHeight = height * (0.034 + closeBoost * 0.052);
+      const waveWidth = width * (0.52 + closeBoost * 0.28);
+      const speed = (0.024 + wind * 0.0028) * (0.72 + closeBoost * 1.45);
+      const x = wrap(width * (i * 0.21) + direction * time * speed * travel, -waveWidth, width + waveWidth);
+      const lean = windVector.x * width * (0.08 + closeBoost * 0.08);
+      const alpha = (0.045 + closeBoost * 0.07) * windCurve * (weather.scene === "storm" ? 0.75 : 1);
+      const shineAlpha = alpha * (weather.scene === "storm" ? 0.16 : rainStrength > 0.02 ? 0.3 : 0.48);
+
+      const shade = ctx.createLinearGradient(0, y - waveHeight, 0, y + waveHeight);
+      shade.addColorStop(0, "rgba(7, 38, 16, 0)");
+      shade.addColorStop(0.42, `rgba(9, 50, 18, ${alpha})`);
+      shade.addColorStop(0.56, `rgba(185, 225, 95, ${shineAlpha})`);
+      shade.addColorStop(1, "rgba(185, 225, 95, 0)");
+
+      ctx.fillStyle = shade;
+      ctx.beginPath();
+      ctx.moveTo(x - waveWidth * 0.5, y - waveHeight * 0.25);
+      ctx.bezierCurveTo(
+        x - waveWidth * 0.18 + lean,
+        y - waveHeight * 0.95,
+        x + waveWidth * 0.18 + lean,
+        y + waveHeight * 0.95,
+        x + waveWidth * 0.55,
+        y + waveHeight * 0.18
+      );
+      ctx.lineTo(x + waveWidth * 0.48, y + waveHeight * 0.88);
+      ctx.bezierCurveTo(
+        x + waveWidth * 0.16 + lean,
+        y + waveHeight * 0.35,
+        x - waveWidth * 0.2 + lean,
+        y - waveHeight * 0.35,
+        x - waveWidth * 0.56,
+        y + waveHeight * 0.2
+      );
+      ctx.closePath();
+      ctx.fill();
+
+      if (x < waveWidth * 0.15) {
+        drawPaddyWaveCopy(x + width + waveWidth * 0.25, y, waveWidth, waveHeight, lean, shade);
+      } else if (x > width - waveWidth * 0.15) {
+        drawPaddyWaveCopy(x - width - waveWidth * 0.25, y, waveWidth, waveHeight, lean, shade);
+      }
+    }
+
+    ctx.restore();
+  }
+
+  function drawPaddyWaveCopy(x, y, waveWidth, waveHeight, lean, fillStyle) {
+    ctx.fillStyle = fillStyle;
+    ctx.beginPath();
+    ctx.moveTo(x - waveWidth * 0.5, y - waveHeight * 0.25);
+    ctx.bezierCurveTo(x - waveWidth * 0.18 + lean, y - waveHeight * 0.95, x + waveWidth * 0.18 + lean, y + waveHeight * 0.95, x + waveWidth * 0.55, y + waveHeight * 0.18);
+    ctx.lineTo(x + waveWidth * 0.48, y + waveHeight * 0.88);
+    ctx.bezierCurveTo(x + waveWidth * 0.16 + lean, y + waveHeight * 0.35, x - waveWidth * 0.2 + lean, y - waveHeight * 0.35, x - waveWidth * 0.56, y + waveHeight * 0.2);
+    ctx.closePath();
+    ctx.fill();
   }
 
   function drawFieldGustBands(time, fieldTop, fieldHeight, wind, windVector, strength) {
