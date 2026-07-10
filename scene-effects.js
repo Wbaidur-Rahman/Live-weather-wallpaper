@@ -5,6 +5,8 @@
   const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
   const refractionCanvas = document.createElement("canvas");
   const refractionCtx = refractionCanvas.getContext("2d", { alpha: true });
+  const swayCanvas = document.createElement("canvas");
+  const swayCtx = swayCanvas.getContext("2d", { alpha: true });
   const weather = {
     scene: "clear",
     windSpeed: 8,
@@ -580,7 +582,7 @@
   }
 
   function drawJutePixelSway(time, fieldTop, fieldHeight, wind, windVector, rainStrength) {
-    if (!fieldReady) return;
+    if (!fieldReady || !swayCtx) return;
 
     const crop = coverCrop(fieldImage.width, fieldImage.height, width, height);
     const area = {
@@ -593,11 +595,15 @@
     const windCurve = clamp(wind / 26, 0.18, 1.9);
     const direction = Math.sign(windVector.x || 1);
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(area.x, area.y, area.w, area.h);
-    ctx.clip();
-    ctx.globalAlpha = weather.scene === "storm" ? 0.62 : rainStrength > 0.02 ? 0.66 : 0.7;
+    const layerW = Math.ceil(area.w + 48);
+    const layerH = Math.ceil(area.h + 12);
+    if (swayCanvas.width !== layerW) swayCanvas.width = layerW;
+    if (swayCanvas.height !== layerH) swayCanvas.height = layerH;
+
+    swayCtx.setTransform(1, 0, 0, 1, 0, 0);
+    swayCtx.clearRect(0, 0, layerW, layerH);
+    swayCtx.globalCompositeOperation = "source-over";
+    swayCtx.globalAlpha = weather.scene === "storm" ? 0.58 : rainStrength > 0.02 ? 0.6 : 0.64;
 
     for (let i = 0; i < strips; i += 1) {
       const t = i / Math.max(1, strips - 1);
@@ -613,16 +619,36 @@
       const gust = Math.sin(time * (0.38 + wind * 0.014) + i * 0.31) * (1.2 + wind * 0.09) * topWeight;
       const dx = direction * bend + wave + gust;
 
-      ctx.drawImage(fieldImage, sx, sy, sw, sh, area.x + dx - 4, dy, area.w + 8, dh);
+      swayCtx.drawImage(fieldImage, sx, sy, sw, sh, 24 + dx - 4, dy - area.y + 6, area.w + 8, dh);
     }
 
-    ctx.globalCompositeOperation = "multiply";
-    const shade = ctx.createLinearGradient(0, area.y, 0, area.y + area.h);
+    swayCtx.globalCompositeOperation = "multiply";
+    const shade = swayCtx.createLinearGradient(0, 0, 0, layerH);
     shade.addColorStop(0, `rgba(5, 34, 15, ${0.03 + windCurve * 0.04})`);
     shade.addColorStop(0.6, `rgba(7, 45, 18, ${0.025 + windCurve * 0.035})`);
     shade.addColorStop(1, "rgba(7, 45, 18, 0)");
-    ctx.fillStyle = shade;
-    ctx.fillRect(area.x, area.y, area.w, area.h);
+    swayCtx.fillStyle = shade;
+    swayCtx.fillRect(0, 0, layerW, layerH);
+
+    swayCtx.globalCompositeOperation = "destination-in";
+    const feather = swayCtx.createLinearGradient(0, 0, layerW, 0);
+    feather.addColorStop(0, "rgba(255, 255, 255, 0)");
+    feather.addColorStop(0.13, "rgba(255, 255, 255, 0.88)");
+    feather.addColorStop(0.86, "rgba(255, 255, 255, 0.86)");
+    feather.addColorStop(1, "rgba(255, 255, 255, 0)");
+    swayCtx.fillStyle = feather;
+    swayCtx.fillRect(0, 0, layerW, layerH);
+
+    const verticalFeather = swayCtx.createLinearGradient(0, 0, 0, layerH);
+    verticalFeather.addColorStop(0, "rgba(255, 255, 255, 0)");
+    verticalFeather.addColorStop(0.12, "rgba(255, 255, 255, 0.92)");
+    verticalFeather.addColorStop(0.82, "rgba(255, 255, 255, 0.9)");
+    verticalFeather.addColorStop(1, "rgba(255, 255, 255, 0)");
+    swayCtx.fillStyle = verticalFeather;
+    swayCtx.fillRect(0, 0, layerW, layerH);
+
+    ctx.save();
+    ctx.drawImage(swayCanvas, area.x - 24, area.y - 6);
     ctx.restore();
   }
 
@@ -866,14 +892,14 @@
     const storm = weather.scene === "storm";
     const windVector = getWindVector();
     const count = storm ? 128 : Math.round(88 + rainStrength * 34);
-    const paneAlpha = storm ? 0.1 : 0.052 + rainStrength * 0.038;
+    const paneAlpha = storm ? 0.075 : 0.04 + rainStrength * 0.026;
     const pane = ctx.createLinearGradient(0, 0, width, height);
 
     captureRefractionScene();
 
     pane.addColorStop(0, `rgba(190, 216, 224, ${paneAlpha})`);
     pane.addColorStop(0.42, "rgba(190, 216, 224, 0)");
-    pane.addColorStop(1, `rgba(150, 185, 190, ${paneAlpha * 0.45})`);
+    pane.addColorStop(1, `rgba(150, 185, 190, ${paneAlpha * 0.32})`);
 
     ctx.save();
     ctx.fillStyle = pane;
@@ -901,7 +927,7 @@
     const y = wrap(drop.y + slide, -height * 0.2, height + drop.trail + drop.radius * 4);
     const stretch = 1 + drop.stretch * 0.14 + sizeBoost * 0.24;
     const trailLength = drop.trail * (0.65 + rainStrength * 0.6) * (0.35 + sizeBoost);
-    const alpha = (0.46 + drop.alpha * 0.42) * (storm ? 1.16 : 1);
+    const alpha = (0.5 + drop.alpha * 0.5) * (storm ? 1.2 : 1);
 
     drawGlassBeadTrail(drop, x, y, radius, trailLength, alpha, windVector, sizeBoost);
 
@@ -933,11 +959,11 @@
     const trailTopY = y - trailLength;
     const trailTopX = x - windVector.x * radius * 0.45;
     const trail = ctx.createLinearGradient(x, y - radius * 0.45, trailTopX, trailTopY);
-    trail.addColorStop(0, `rgba(145, 188, 198, ${alpha * 0.16 * sizeBoost})`);
-    trail.addColorStop(0.5, `rgba(80, 118, 126, ${alpha * 0.08 * sizeBoost})`);
-    trail.addColorStop(1, "rgba(80, 118, 126, 0)");
+    trail.addColorStop(0, `rgba(236, 249, 252, ${alpha * 0.12 * sizeBoost})`);
+    trail.addColorStop(0.42, `rgba(16, 42, 48, ${alpha * 0.16 * sizeBoost})`);
+    trail.addColorStop(1, "rgba(16, 42, 48, 0)");
     ctx.strokeStyle = trail;
-    ctx.lineWidth = Math.max(0.55, radius * 0.13);
+    ctx.lineWidth = Math.max(0.65, radius * 0.11);
     ctx.beginPath();
     ctx.moveTo(x, y - radius * 0.62);
     ctx.bezierCurveTo(
@@ -955,18 +981,22 @@
       const t = (i + 0.35) / beadCount;
       const beadY = y - trailLength * t;
       const beadX = x - windVector.x * radius * 0.42 * t + Math.sin(drop.phase + i * 1.7) * radius * 0.16;
-      const beadR = Math.max(0.45, radius * (0.12 + (1 - t) * 0.05) * (0.7 + drop.trailDots * 0.5));
-      const beadAlpha = alpha * (0.22 + (1 - t) * 0.18);
+      const beadR = Math.max(0.48, radius * (0.11 + (1 - t) * 0.06) * (0.72 + drop.trailDots * 0.58));
+      const beadAlpha = alpha * (0.34 + (1 - t) * 0.22);
 
-      ctx.fillStyle = `rgba(225, 244, 248, ${beadAlpha})`;
+      ctx.fillStyle = `rgba(245, 253, 255, ${beadAlpha * 0.72})`;
       ctx.beginPath();
       ctx.ellipse(beadX, beadY, beadR * 0.8, beadR, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = `rgba(26, 54, 62, ${beadAlpha * 0.5})`;
-      ctx.lineWidth = Math.max(0.45, beadR * 0.35);
+      ctx.strokeStyle = `rgba(4, 21, 27, ${beadAlpha * 0.78})`;
+      ctx.lineWidth = Math.max(0.42, beadR * 0.32);
       ctx.beginPath();
       ctx.ellipse(beadX, beadY, beadR * 0.8, beadR, 0, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.fillStyle = `rgba(255, 255, 255, ${beadAlpha * 0.62})`;
+      ctx.beginPath();
+      ctx.ellipse(beadX - beadR * 0.28, beadY - beadR * 0.34, Math.max(0.28, beadR * 0.22), Math.max(0.22, beadR * 0.16), -0.5, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
@@ -977,44 +1007,44 @@
       drawDropRefraction(x, y, rx, ry, flatness, alpha);
     }
 
-    const fill = ctx.createRadialGradient(x - rx * 0.35, y - ry * 0.42, radius * 0.08, x, y, radius * 1.4);
-    fill.addColorStop(0, `rgba(236, 249, 251, ${alpha * 0.26})`);
-    fill.addColorStop(0.32, `rgba(142, 194, 205, ${alpha * 0.15})`);
-    fill.addColorStop(0.72, `rgba(36, 78, 88, ${alpha * 0.18})`);
-    fill.addColorStop(1, `rgba(3, 18, 23, ${alpha * 0.4})`);
+    const fill = ctx.createRadialGradient(x - rx * 0.36, y - ry * 0.42, radius * 0.04, x, y, radius * 1.52);
+    fill.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.16})`);
+    fill.addColorStop(0.34, `rgba(206, 234, 238, ${alpha * 0.055})`);
+    fill.addColorStop(0.7, `rgba(20, 52, 59, ${alpha * 0.1})`);
+    fill.addColorStop(1, `rgba(0, 8, 12, ${alpha * 0.34})`);
     ctx.fillStyle = fill;
     ctx.beginPath();
     drawFlattenedBeadPath(x, y, rx, ry, flatness);
     ctx.fill();
 
-    ctx.strokeStyle = `rgba(4, 20, 25, ${alpha * 0.5})`;
-    ctx.lineWidth = Math.max(0.6, radius * 0.18);
+    ctx.strokeStyle = `rgba(1, 12, 16, ${alpha * 0.68})`;
+    ctx.lineWidth = Math.max(0.72, radius * 0.15);
     ctx.beginPath();
     drawFlattenedBeadPath(x, y, rx, ry, flatness);
     ctx.stroke();
 
-    ctx.strokeStyle = `rgba(220, 240, 244, ${alpha * 0.78})`;
-    ctx.lineWidth = Math.max(0.65, radius * 0.16);
+    ctx.strokeStyle = `rgba(250, 255, 255, ${alpha * 0.92})`;
+    ctx.lineWidth = Math.max(0.58, radius * 0.11);
     ctx.beginPath();
     ctx.moveTo(x - rx * 0.34, y - ry * 0.36);
     ctx.quadraticCurveTo(x - rx * 0.08, y - ry * 0.62, x + rx * 0.26, y - ry * 0.36);
     ctx.stroke();
 
-    ctx.fillStyle = `rgba(235, 250, 252, ${alpha * 0.52})`;
+    ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.74})`;
     ctx.beginPath();
     ctx.ellipse(x - rx * 0.28, y - ry * 0.3, Math.max(0.75, radius * 0.14), Math.max(0.55, radius * 0.08), -0.55, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = `rgba(42, 78, 86, ${alpha * 0.42})`;
-    ctx.lineWidth = Math.max(0.8, radius * 0.14);
+    ctx.strokeStyle = `rgba(1, 14, 18, ${alpha * 0.5})`;
+    ctx.lineWidth = Math.max(0.7, radius * 0.12);
     ctx.beginPath();
     ctx.moveTo(x - rx * 0.42, y + ry * 0.32);
     ctx.quadraticCurveTo(x - rx * 0.08, y + ry * 0.62, x + rx * 0.34, y + ry * 0.46);
     ctx.stroke();
 
     if (flatness > 0.04) {
-      ctx.strokeStyle = `rgba(7, 22, 27, ${alpha * 0.32 * flatness})`;
-      ctx.lineWidth = Math.max(0.8, radius * 0.18);
+      ctx.strokeStyle = `rgba(2, 12, 16, ${alpha * 0.48 * flatness})`;
+      ctx.lineWidth = Math.max(0.7, radius * 0.14);
       ctx.beginPath();
       ctx.moveTo(x - rx * (0.46 + flatness * 0.1), y + ry * (0.5 + flatness * 0.16));
       ctx.quadraticCurveTo(x, y + ry * (0.68 + flatness * 0.08), x + rx * (0.46 + flatness * 0.1), y + ry * (0.5 + flatness * 0.16));
@@ -1049,16 +1079,24 @@
     ctx.beginPath();
     drawFlattenedBeadPath(x, y, rx, ry, flatness);
     ctx.clip();
-    ctx.globalAlpha = clamp(alpha * 0.56, 0.34, 0.66);
+    ctx.globalAlpha = clamp(alpha * 0.72, 0.42, 0.78);
     ctx.drawImage(refractionCanvas, sx, sy, sw, sh, x - rx * 1.1, y - ry * 1.1, rx * 2.2, ry * 2.2);
 
     const caustic = ctx.createLinearGradient(x, y - ry, x, y + ry);
-    caustic.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.08})`);
-    caustic.addColorStop(0.56, "rgba(255, 255, 255, 0)");
-    caustic.addColorStop(1, `rgba(2, 14, 18, ${alpha * 0.28})`);
+    caustic.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.1})`);
+    caustic.addColorStop(0.48, "rgba(255, 255, 255, 0)");
+    caustic.addColorStop(0.76, `rgba(2, 14, 18, ${alpha * 0.16})`);
+    caustic.addColorStop(1, `rgba(0, 7, 10, ${alpha * 0.42})`);
     ctx.globalAlpha = 1;
     ctx.fillStyle = caustic;
     ctx.fillRect(x - rx * 1.1, y - ry * 1.1, rx * 2.2, ry * 2.2);
+
+    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.34})`;
+    ctx.lineWidth = Math.max(0.45, rx * 0.06);
+    ctx.beginPath();
+    ctx.moveTo(x - rx * 0.58, y + ry * 0.28);
+    ctx.quadraticCurveTo(x - rx * 0.1, y + ry * 0.58, x + rx * 0.5, y + ry * 0.36);
+    ctx.stroke();
     ctx.restore();
   }
 
