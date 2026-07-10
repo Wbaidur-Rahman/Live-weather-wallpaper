@@ -1,6 +1,7 @@
 # Local render/debug screenshots generated during tuning.
 /*.png
 !/render-check.png
+/reference_frames/
 
 # Original cloud source pack is large; processed runtime sprites are committed.
 /assets/clouds/source/
