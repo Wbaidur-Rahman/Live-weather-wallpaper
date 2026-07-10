@@ -818,18 +818,20 @@
   function drawRoundGlassBead(x, y, radius, stretch, alpha, flatness) {
     const rx = radius * (0.94 + (stretch - 1) * 0.08 + flatness * 0.18);
     const ry = radius * (stretch - flatness * 0.12);
+    drawDropRefraction(x, y, rx, ry, flatness, alpha);
+
     const fill = ctx.createRadialGradient(x - rx * 0.35, y - ry * 0.42, radius * 0.08, x, y, radius * 1.4);
-    fill.addColorStop(0, `rgba(224, 241, 244, ${alpha * 0.78})`);
-    fill.addColorStop(0.32, `rgba(122, 178, 190, ${alpha * 0.42})`);
-    fill.addColorStop(0.72, `rgba(42, 82, 92, ${alpha * 0.3})`);
-    fill.addColorStop(1, `rgba(7, 22, 27, ${alpha * 0.5})`);
+    fill.addColorStop(0, `rgba(236, 249, 251, ${alpha * 0.34})`);
+    fill.addColorStop(0.32, `rgba(142, 194, 205, ${alpha * 0.18})`);
+    fill.addColorStop(0.72, `rgba(36, 78, 88, ${alpha * 0.2})`);
+    fill.addColorStop(1, `rgba(3, 18, 23, ${alpha * 0.44})`);
     ctx.fillStyle = fill;
     ctx.beginPath();
     drawFlattenedBeadPath(x, y, rx, ry, flatness);
     ctx.fill();
 
-    ctx.strokeStyle = `rgba(10, 30, 36, ${alpha * 0.42})`;
-    ctx.lineWidth = Math.max(0.9, radius * 0.22);
+    ctx.strokeStyle = `rgba(4, 20, 25, ${alpha * 0.56})`;
+    ctx.lineWidth = Math.max(0.9, radius * 0.24);
     ctx.beginPath();
     drawFlattenedBeadPath(x, y, rx, ry, flatness);
     ctx.stroke();
@@ -840,6 +842,11 @@
     ctx.moveTo(x - rx * 0.34, y - ry * 0.36);
     ctx.quadraticCurveTo(x - rx * 0.08, y - ry * 0.62, x + rx * 0.26, y - ry * 0.36);
     ctx.stroke();
+
+    ctx.fillStyle = `rgba(235, 250, 252, ${alpha * 0.52})`;
+    ctx.beginPath();
+    ctx.ellipse(x - rx * 0.28, y - ry * 0.3, Math.max(1, radius * 0.16), Math.max(1, radius * 0.1), -0.55, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.strokeStyle = `rgba(42, 78, 86, ${alpha * 0.42})`;
     ctx.lineWidth = Math.max(0.8, radius * 0.14);
@@ -856,6 +863,37 @@
       ctx.quadraticCurveTo(x, y + ry * (0.68 + flatness * 0.08), x + rx * (0.46 + flatness * 0.1), y + ry * (0.5 + flatness * 0.16));
       ctx.stroke();
     }
+  }
+
+  function drawDropRefraction(x, y, rx, ry, flatness, alpha) {
+    if (!fieldReady || !fieldImage || width <= 0 || height <= 0) return;
+
+    const crop = coverCrop(fieldImage.width, fieldImage.height, width, height);
+    const sampleW = Math.max(2, rx * 2.2);
+    const sampleH = Math.max(2, ry * 2.2);
+    const sourceScale = 0.72;
+    const lensOffsetX = rx * 0.18;
+    const lensOffsetY = -ry * 0.22;
+    const sx = crop.sx + clamp((x - sampleW * sourceScale * 0.5 + lensOffsetX) / width, 0, 1) * crop.sw;
+    const sy = crop.sy + clamp((y - sampleH * sourceScale * 0.5 + lensOffsetY) / height, 0, 1) * crop.sh;
+    const sw = Math.min(crop.sw, (sampleW * sourceScale / width) * crop.sw);
+    const sh = Math.min(crop.sh, (sampleH * sourceScale / height) * crop.sh);
+
+    ctx.save();
+    ctx.beginPath();
+    drawFlattenedBeadPath(x, y, rx, ry, flatness);
+    ctx.clip();
+    ctx.globalAlpha = clamp(alpha * 0.42, 0.22, 0.48);
+    ctx.drawImage(fieldImage, sx, sy, sw, sh, x - rx * 1.08, y - ry * 1.08, rx * 2.16, ry * 2.16);
+
+    const caustic = ctx.createLinearGradient(x, y - ry, x, y + ry);
+    caustic.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.08})`);
+    caustic.addColorStop(0.56, "rgba(255, 255, 255, 0)");
+    caustic.addColorStop(1, `rgba(2, 14, 18, ${alpha * 0.28})`);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = caustic;
+    ctx.fillRect(x - rx * 1.1, y - ry * 1.1, rx * 2.2, ry * 2.2);
+    ctx.restore();
   }
 
   function drawFlattenedBeadPath(x, y, rx, ry, flatness) {
