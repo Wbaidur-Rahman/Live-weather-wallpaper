@@ -741,7 +741,7 @@
 
     const storm = weather.scene === "storm";
     const windVector = getWindVector();
-    const count = storm ? 72 : Math.round(46 + rainStrength * 26);
+    const count = storm ? 96 : Math.round(68 + rainStrength * 26);
     const paneAlpha = storm ? 0.1 : 0.052 + rainStrength * 0.038;
     const pane = ctx.createLinearGradient(0, 0, width, height);
 
@@ -763,43 +763,23 @@
   }
 
   function drawGlassDrop(drop, time, rainStrength, windVector, storm) {
-    const baseRadius = drop.radius * (storm ? 1.08 : 0.88 + rainStrength * 0.16);
-    const sizeBoost = clamp((baseRadius - 3) / 8, 0, 1.4);
+    const baseRadius = drop.radius * (storm ? 1.02 : 0.86 + rainStrength * 0.12);
+    const sizeBoost = clamp((baseRadius - 1.4) / 5.4, 0, 1.35);
     const mergeCycle = (time * (0.1 + drop.mergeSpeed * 0.08) + drop.mergePhase) % 1;
     const mergeProgress = smoothstep(0.2, 0.82, mergeCycle);
     const merging = drop.childRadius > 0 && mergeCycle > 0.16 && mergeCycle < 0.92;
-    const mergedBoost = merging ? smoothstep(0.62, 0.88, mergeCycle) * drop.childRadius * 0.36 : 0;
+    const mergedBoost = merging ? smoothstep(0.62, 0.88, mergeCycle) * drop.childRadius * 0.24 : 0;
     const radius = baseRadius + mergedBoost;
-    const speed = ((storm ? 7 : 3.2) + rainStrength * 12) * (0.38 + sizeBoost * 1.45);
+    const speed = ((storm ? 6.2 : 2.8) + rainStrength * 10) * (0.2 + sizeBoost * 1.5);
     const slide = time * speed * drop.speed;
     const wiggle = Math.sin(time * (0.45 + drop.wiggle * 0.22) + drop.phase) * radius * 0.18;
     const x = wrap(drop.x + windVector.x * slide * 0.32 + wiggle, -drop.radius * 4, width + drop.radius * 4);
     const y = wrap(drop.y + slide, -height * 0.2, height + drop.trail + drop.radius * 4);
-    const stretch = 1.02 + drop.stretch * 0.18 + rainStrength * 0.12 + sizeBoost * 0.1;
-    const trailLength = drop.trail * (0.45 + rainStrength * 0.6) * (0.45 + sizeBoost);
+    const stretch = 0.98 + drop.stretch * 0.12 + sizeBoost * 0.22;
+    const trailLength = drop.trail * (0.65 + rainStrength * 0.6) * (0.35 + sizeBoost);
     const alpha = (0.46 + drop.alpha * 0.42) * (storm ? 1.16 : 1);
 
-    if (trailLength > radius * 1.4) {
-      const trailTopY = y - trailLength;
-      const trailTopX = x - windVector.x * radius * 0.55;
-      const trail = ctx.createLinearGradient(x, y - radius * 0.45, trailTopX, trailTopY);
-      trail.addColorStop(0, `rgba(145, 188, 198, ${alpha * 0.34 * sizeBoost})`);
-      trail.addColorStop(0.58, `rgba(55, 93, 102, ${alpha * 0.16 * sizeBoost})`);
-      trail.addColorStop(1, "rgba(55, 93, 102, 0)");
-      ctx.strokeStyle = trail;
-      ctx.lineWidth = Math.max(1.1, radius * 0.32);
-      ctx.beginPath();
-      ctx.moveTo(x, y - radius * 0.62);
-      ctx.bezierCurveTo(
-        x - windVector.x * radius * 0.5,
-        y - trailLength * 0.3,
-        x + Math.sin(drop.phase) * radius * 0.28,
-        y - trailLength * 0.68,
-        trailTopX,
-        trailTopY
-      );
-      ctx.stroke();
-    }
+    drawGlassBeadTrail(drop, x, y, radius, trailLength, alpha, windVector, sizeBoost);
 
     if (merging && drop.childRadius > 1.2) {
       const childT = mergeProgress;
@@ -816,11 +796,54 @@
       ctx.moveTo(childX, childY);
       ctx.quadraticCurveTo((childX + x) / 2 + windVector.x * radius * 0.16, (childY + y) / 2, x, y);
       ctx.stroke();
-      drawRoundGlassBead(childX, childY, drop.childRadius * (1 - childT * 0.38), 1.02, childAlpha, 0, false);
+      drawRoundGlassBead(childX, childY, drop.childRadius * (1 - childT * 0.38), 0.98, childAlpha, 0, false);
     }
 
     const contactFlatness = clamp(sizeBoost * 0.36 + rainStrength * 0.08, 0, 0.5);
-    drawRoundGlassBead(x, y, radius, stretch, alpha, contactFlatness, radius > 4.2);
+    drawRoundGlassBead(x, y, radius, stretch, alpha, contactFlatness, radius > 3.7);
+  }
+
+  function drawGlassBeadTrail(drop, x, y, radius, trailLength, alpha, windVector, sizeBoost) {
+    if (trailLength <= radius * 1.2) return;
+
+    const trailTopY = y - trailLength;
+    const trailTopX = x - windVector.x * radius * 0.45;
+    const trail = ctx.createLinearGradient(x, y - radius * 0.45, trailTopX, trailTopY);
+    trail.addColorStop(0, `rgba(145, 188, 198, ${alpha * 0.16 * sizeBoost})`);
+    trail.addColorStop(0.5, `rgba(80, 118, 126, ${alpha * 0.08 * sizeBoost})`);
+    trail.addColorStop(1, "rgba(80, 118, 126, 0)");
+    ctx.strokeStyle = trail;
+    ctx.lineWidth = Math.max(0.55, radius * 0.13);
+    ctx.beginPath();
+    ctx.moveTo(x, y - radius * 0.62);
+    ctx.bezierCurveTo(
+      x - windVector.x * radius * 0.36,
+      y - trailLength * 0.28,
+      x + Math.sin(drop.phase) * radius * 0.2,
+      y - trailLength * 0.68,
+      trailTopX,
+      trailTopY
+    );
+    ctx.stroke();
+
+    const beadCount = 3 + Math.floor(drop.trailDots * 6);
+    for (let i = 0; i < beadCount; i += 1) {
+      const t = (i + 0.35) / beadCount;
+      const beadY = y - trailLength * t;
+      const beadX = x - windVector.x * radius * 0.42 * t + Math.sin(drop.phase + i * 1.7) * radius * 0.16;
+      const beadR = Math.max(0.45, radius * (0.12 + (1 - t) * 0.05) * (0.7 + drop.trailDots * 0.5));
+      const beadAlpha = alpha * (0.22 + (1 - t) * 0.18);
+
+      ctx.fillStyle = `rgba(225, 244, 248, ${beadAlpha})`;
+      ctx.beginPath();
+      ctx.ellipse(beadX, beadY, beadR * 0.8, beadR, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(26, 54, 62, ${beadAlpha * 0.5})`;
+      ctx.lineWidth = Math.max(0.45, beadR * 0.35);
+      ctx.beginPath();
+      ctx.ellipse(beadX, beadY, beadR * 0.8, beadR, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 
   function drawRoundGlassBead(x, y, radius, stretch, alpha, flatness, refract) {
@@ -831,23 +854,23 @@
     }
 
     const fill = ctx.createRadialGradient(x - rx * 0.35, y - ry * 0.42, radius * 0.08, x, y, radius * 1.4);
-    fill.addColorStop(0, `rgba(236, 249, 251, ${alpha * 0.34})`);
-    fill.addColorStop(0.32, `rgba(142, 194, 205, ${alpha * 0.18})`);
-    fill.addColorStop(0.72, `rgba(36, 78, 88, ${alpha * 0.2})`);
-    fill.addColorStop(1, `rgba(3, 18, 23, ${alpha * 0.44})`);
+    fill.addColorStop(0, `rgba(236, 249, 251, ${alpha * 0.26})`);
+    fill.addColorStop(0.32, `rgba(142, 194, 205, ${alpha * 0.15})`);
+    fill.addColorStop(0.72, `rgba(36, 78, 88, ${alpha * 0.18})`);
+    fill.addColorStop(1, `rgba(3, 18, 23, ${alpha * 0.4})`);
     ctx.fillStyle = fill;
     ctx.beginPath();
     drawFlattenedBeadPath(x, y, rx, ry, flatness);
     ctx.fill();
 
-    ctx.strokeStyle = `rgba(4, 20, 25, ${alpha * 0.56})`;
-    ctx.lineWidth = Math.max(0.9, radius * 0.24);
+    ctx.strokeStyle = `rgba(4, 20, 25, ${alpha * 0.5})`;
+    ctx.lineWidth = Math.max(0.6, radius * 0.18);
     ctx.beginPath();
     drawFlattenedBeadPath(x, y, rx, ry, flatness);
     ctx.stroke();
 
     ctx.strokeStyle = `rgba(220, 240, 244, ${alpha * 0.78})`;
-    ctx.lineWidth = Math.max(0.9, radius * 0.18);
+    ctx.lineWidth = Math.max(0.65, radius * 0.16);
     ctx.beginPath();
     ctx.moveTo(x - rx * 0.34, y - ry * 0.36);
     ctx.quadraticCurveTo(x - rx * 0.08, y - ry * 0.62, x + rx * 0.26, y - ry * 0.36);
@@ -855,7 +878,7 @@
 
     ctx.fillStyle = `rgba(235, 250, 252, ${alpha * 0.52})`;
     ctx.beginPath();
-    ctx.ellipse(x - rx * 0.28, y - ry * 0.3, Math.max(1, radius * 0.16), Math.max(1, radius * 0.1), -0.55, 0, Math.PI * 2);
+    ctx.ellipse(x - rx * 0.28, y - ry * 0.3, Math.max(0.75, radius * 0.14), Math.max(0.55, radius * 0.08), -0.55, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.strokeStyle = `rgba(42, 78, 86, ${alpha * 0.42})`;
@@ -938,13 +961,14 @@
   function createGlassDrops() {
     const rng = random(42403);
     const result = [];
-    for (let i = 0; i < 82; i += 1) {
+    for (let i = 0; i < 112; i += 1) {
+      const big = rng() > 0.88;
       result.push({
         x: rng() * width,
         y: rng() * height,
-        radius: 1.8 + rng() * 6.4,
+        radius: big ? 3.8 + rng() * 2.8 : 0.9 + rng() * 2.7,
         stretch: rng(),
-        trail: height * (0.025 + rng() * 0.095),
+        trail: height * (0.045 + rng() * 0.16),
         speed: 0.45 + rng() * 0.85,
         alpha: rng(),
         wiggle: rng(),
@@ -953,7 +977,8 @@
         mergeSpeed: rng(),
         mergeOffsetX: (rng() - 0.5) * 3.6,
         mergeOffsetY: -1.2 - rng() * 2.4,
-        childRadius: rng() > 0.28 ? 0.9 + rng() * 1.9 : 0
+        trailDots: rng(),
+        childRadius: rng() > 0.28 ? 0.55 + rng() * 1.45 : 0
       });
     }
     return result;
