@@ -735,8 +735,8 @@
 
     const storm = weather.scene === "storm";
     const windVector = getWindVector();
-    const count = storm ? 46 : Math.round(24 + rainStrength * 16);
-    const paneAlpha = storm ? 0.072 : 0.038 + rainStrength * 0.026;
+    const count = storm ? 50 : Math.round(30 + rainStrength * 18);
+    const paneAlpha = storm ? 0.084 : 0.044 + rainStrength * 0.03;
     const pane = ctx.createLinearGradient(0, 0, width, height);
 
     pane.addColorStop(0, `rgba(190, 216, 224, ${paneAlpha})`);
@@ -760,17 +760,17 @@
     const wiggle = Math.sin(time * (0.7 + drop.wiggle * 0.35) + drop.phase) * drop.radius * 0.32;
     const x = wrap(drop.x + windVector.x * slide * 0.32 + wiggle, -drop.radius * 4, width + drop.radius * 4);
     const y = wrap(drop.y + slide, -height * 0.2, height + drop.trail + drop.radius * 4);
-    const radius = drop.radius * (storm ? 1.18 : 0.92 + rainStrength * 0.28);
-    const stretch = 1.45 + drop.stretch * 1.25 + rainStrength * 0.9;
-    const trailLength = drop.trail * (0.55 + rainStrength * 0.75);
-    const alpha = (0.24 + drop.alpha * 0.34) * (storm ? 1.12 : 1);
+    const radius = drop.radius * (storm ? 1.28 : 1.05 + rainStrength * 0.32);
+    const stretch = 1.58 + drop.stretch * 1.35 + rainStrength * 1.0;
+    const trailLength = drop.trail * (0.7 + rainStrength * 0.9);
+    const alpha = (0.34 + drop.alpha * 0.38) * (storm ? 1.14 : 1);
 
     const trail = ctx.createLinearGradient(x, y - radius, x + windVector.x * radius * 0.8, y + trailLength);
-    trail.addColorStop(0, `rgba(180, 210, 218, ${alpha * 0.18})`);
-    trail.addColorStop(0.6, `rgba(152, 184, 190, ${alpha * 0.09})`);
+    trail.addColorStop(0, `rgba(176, 212, 220, ${alpha * 0.34})`);
+    trail.addColorStop(0.55, `rgba(112, 150, 158, ${alpha * 0.14})`);
     trail.addColorStop(1, "rgba(152, 184, 190, 0)");
     ctx.strokeStyle = trail;
-    ctx.lineWidth = Math.max(1, radius * 0.34);
+    ctx.lineWidth = Math.max(1.1, radius * 0.42);
     ctx.beginPath();
     ctx.moveTo(x, y + radius * 0.4);
     ctx.bezierCurveTo(
@@ -783,26 +783,41 @@
     );
     ctx.stroke();
 
+    ctx.strokeStyle = `rgba(30, 52, 56, ${alpha * 0.18})`;
+    ctx.lineWidth = Math.max(0.8, radius * 0.2);
+    ctx.beginPath();
+    ctx.moveTo(x + radius * 0.22, y + radius * stretch * 0.12);
+    ctx.quadraticCurveTo(x + radius * 0.54, y + radius * stretch * 0.46, x + radius * 0.18, y + radius * stretch * 0.78);
+    ctx.stroke();
+
     const fill = ctx.createRadialGradient(x - radius * 0.34, y - radius * 0.45, radius * 0.1, x, y, radius * 1.45);
-    fill.addColorStop(0, `rgba(218, 236, 240, ${alpha * 0.48})`);
-    fill.addColorStop(0.42, `rgba(172, 204, 212, ${alpha * 0.18})`);
-    fill.addColorStop(1, `rgba(35, 58, 62, ${alpha * 0.2})`);
+    fill.addColorStop(0, `rgba(224, 241, 244, ${alpha * 0.7})`);
+    fill.addColorStop(0.34, `rgba(164, 202, 210, ${alpha * 0.28})`);
+    fill.addColorStop(0.78, `rgba(72, 102, 106, ${alpha * 0.16})`);
+    fill.addColorStop(1, `rgba(16, 34, 38, ${alpha * 0.32})`);
     ctx.fillStyle = fill;
     ctx.beginPath();
     ctx.ellipse(x, y, radius * (0.68 + drop.stretch * 0.18), radius * stretch, windVector.x * 0.08, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = `rgba(206, 226, 230, ${alpha * 0.28})`;
-    ctx.lineWidth = Math.max(0.7, radius * 0.13);
+    ctx.strokeStyle = `rgba(178, 210, 216, ${alpha * 0.46})`;
+    ctx.lineWidth = Math.max(0.8, radius * 0.18);
     ctx.beginPath();
     ctx.ellipse(x, y, radius * (0.72 + drop.stretch * 0.18), radius * stretch, windVector.x * 0.08, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.strokeStyle = `rgba(226, 239, 242, ${alpha * 0.46})`;
-    ctx.lineWidth = Math.max(0.8, radius * 0.16);
+    ctx.strokeStyle = `rgba(232, 244, 246, ${alpha * 0.7})`;
+    ctx.lineWidth = Math.max(0.9, radius * 0.18);
     ctx.beginPath();
     ctx.moveTo(x - radius * 0.28, y - radius * stretch * 0.45);
     ctx.quadraticCurveTo(x - radius * 0.05, y - radius * stretch * 0.75, x + radius * 0.24, y - radius * stretch * 0.5);
+    ctx.stroke();
+
+    ctx.strokeStyle = `rgba(118, 150, 156, ${alpha * 0.3})`;
+    ctx.lineWidth = Math.max(0.7, radius * 0.11);
+    ctx.beginPath();
+    ctx.moveTo(x - radius * 0.42, y + radius * stretch * 0.35);
+    ctx.quadraticCurveTo(x - radius * 0.12, y + radius * stretch * 0.74, x + radius * 0.34, y + radius * stretch * 0.54);
     ctx.stroke();
   }
 
@@ -813,7 +828,7 @@
       result.push({
         x: rng() * width,
         y: rng() * height,
-        radius: 2.6 + rng() * 5.8,
+        radius: 3.2 + rng() * 6.8,
         stretch: rng(),
         trail: height * (0.035 + rng() * 0.12),
         speed: 0.35 + rng() * 1.15,
