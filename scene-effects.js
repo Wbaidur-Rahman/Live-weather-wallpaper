@@ -763,19 +763,19 @@
   }
 
   function drawGlassDrop(drop, time, rainStrength, windVector, storm) {
-    const baseRadius = drop.radius * (storm ? 1.02 : 0.86 + rainStrength * 0.12);
+    const baseRadius = drop.radius * (storm ? 1.22 : 1.02 + rainStrength * 0.18);
     const sizeBoost = clamp((baseRadius - 1.4) / 5.4, 0, 1.35);
     const mergeCycle = (time * (0.1 + drop.mergeSpeed * 0.08) + drop.mergePhase) % 1;
     const mergeProgress = smoothstep(0.2, 0.82, mergeCycle);
     const merging = drop.childRadius > 0 && mergeCycle > 0.16 && mergeCycle < 0.92;
     const mergedBoost = merging ? smoothstep(0.62, 0.88, mergeCycle) * drop.childRadius * 0.24 : 0;
     const radius = baseRadius + mergedBoost;
-    const speed = ((storm ? 9.5 : 4.6) + rainStrength * 15) * (0.16 + sizeBoost * 1.85);
+    const speed = ((storm ? 18 : 9) + rainStrength * 28) * (0.18 + sizeBoost * 2.45);
     const slide = time * speed * drop.speed;
     const wiggle = Math.sin(time * (0.45 + drop.wiggle * 0.22) + drop.phase) * radius * 0.18;
     const x = wrap(drop.x + windVector.x * slide * 0.32 + wiggle, -drop.radius * 4, width + drop.radius * 4);
     const y = wrap(drop.y + slide, -height * 0.2, height + drop.trail + drop.radius * 4);
-    const stretch = 0.98 + drop.stretch * 0.12 + sizeBoost * 0.22;
+    const stretch = 1 + drop.stretch * 0.14 + sizeBoost * 0.24;
     const trailLength = drop.trail * (0.65 + rainStrength * 0.6) * (0.35 + sizeBoost);
     const alpha = (0.46 + drop.alpha * 0.42) * (storm ? 1.16 : 1);
 
@@ -962,14 +962,14 @@
     const rng = random(42403);
     const result = [];
     for (let i = 0; i < 146; i += 1) {
-      const big = rng() > 0.86;
+      const big = rng() > 0.78;
       result.push({
         x: rng() * width,
         y: rng() * height,
-        radius: big ? 3.8 + rng() * 2.8 : 0.9 + rng() * 2.7,
+        radius: big ? 4.6 + rng() * 4.6 : 1.4 + rng() * 3.4,
         stretch: rng(),
         trail: height * (0.045 + rng() * 0.16),
-        speed: big ? 0.85 + rng() * 1.05 : 0.48 + rng() * 0.82,
+        speed: big ? 1.15 + rng() * 1.45 : 0.62 + rng() * 1.05,
         alpha: rng(),
         wiggle: rng(),
         phase: rng() * Math.PI * 2,
