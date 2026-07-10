@@ -741,7 +741,7 @@
 
     const storm = weather.scene === "storm";
     const windVector = getWindVector();
-    const count = storm ? 96 : Math.round(68 + rainStrength * 26);
+    const count = storm ? 128 : Math.round(88 + rainStrength * 34);
     const paneAlpha = storm ? 0.1 : 0.052 + rainStrength * 0.038;
     const pane = ctx.createLinearGradient(0, 0, width, height);
 
@@ -770,7 +770,7 @@
     const merging = drop.childRadius > 0 && mergeCycle > 0.16 && mergeCycle < 0.92;
     const mergedBoost = merging ? smoothstep(0.62, 0.88, mergeCycle) * drop.childRadius * 0.24 : 0;
     const radius = baseRadius + mergedBoost;
-    const speed = ((storm ? 6.2 : 2.8) + rainStrength * 10) * (0.2 + sizeBoost * 1.5);
+    const speed = ((storm ? 9.5 : 4.6) + rainStrength * 15) * (0.16 + sizeBoost * 1.85);
     const slide = time * speed * drop.speed;
     const wiggle = Math.sin(time * (0.45 + drop.wiggle * 0.22) + drop.phase) * radius * 0.18;
     const x = wrap(drop.x + windVector.x * slide * 0.32 + wiggle, -drop.radius * 4, width + drop.radius * 4);
@@ -961,15 +961,15 @@
   function createGlassDrops() {
     const rng = random(42403);
     const result = [];
-    for (let i = 0; i < 112; i += 1) {
-      const big = rng() > 0.88;
+    for (let i = 0; i < 146; i += 1) {
+      const big = rng() > 0.86;
       result.push({
         x: rng() * width,
         y: rng() * height,
         radius: big ? 3.8 + rng() * 2.8 : 0.9 + rng() * 2.7,
         stretch: rng(),
         trail: height * (0.045 + rng() * 0.16),
-        speed: 0.45 + rng() * 0.85,
+        speed: big ? 0.85 + rng() * 1.05 : 0.48 + rng() * 0.82,
         alpha: rng(),
         wiggle: rng(),
         phase: rng() * Math.PI * 2,
