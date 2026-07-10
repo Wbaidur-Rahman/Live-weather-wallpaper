@@ -435,6 +435,7 @@
     const gustStrength = weather.scene === "storm" ? 0.9 : weather.scene === "rain" ? 0.72 : 0.46;
 
     drawPaddyWindWaves(time, fieldTop, fieldHeight, wind, windVector, rainStrength);
+    drawJuteWindSheets(time, fieldTop, fieldHeight, wind, windVector, rainStrength);
     drawFieldGustBands(time, fieldTop, fieldHeight, wind, windVector, gustStrength);
     if (rainStrength > 0.02) {
       drawWetFieldSheen(time, fieldTop, fieldHeight, windVector, rainStrength);
@@ -516,6 +517,62 @@
       } else if (x > width - waveWidth * 0.15) {
         drawPaddyWaveCopy(x - width - waveWidth * 0.25, y, waveWidth, waveHeight, lean, shade);
       }
+    }
+
+    ctx.restore();
+  }
+
+  function drawJuteWindSheets(time, fieldTop, fieldHeight, wind, windVector, rainStrength) {
+    const windCurve = clamp(wind / 28, 0.18, 1.8);
+    const left = width * 0.64;
+    const top = fieldTop + fieldHeight * 0.02;
+    const areaWidth = width * 0.34;
+    const areaHeight = fieldHeight * 0.46;
+    const sheetCount = weather.scene === "storm" ? 7 : weather.scene === "rain" ? 6 : 5;
+    const direction = Math.sign(windVector.x || 1);
+    const travel = areaWidth * 1.5;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left, top, areaWidth, areaHeight);
+    ctx.clip();
+    ctx.globalCompositeOperation = "source-over";
+
+    for (let i = 0; i < sheetCount; i += 1) {
+      const t = i / Math.max(1, sheetCount - 1);
+      const sheetWidth = areaWidth * (0.56 + t * 0.18);
+      const sheetHeight = areaHeight * (0.55 + t * 0.18);
+      const x = wrap(left + areaWidth * (i * 0.26) + direction * time * (0.02 + wind * 0.0025) * travel, left - sheetWidth, left + areaWidth + sheetWidth);
+      const y = top + areaHeight * (0.16 + t * 0.62) + Math.sin(time * (0.48 + windCurve * 0.28) + i) * areaHeight * 0.08;
+      const lean = windVector.x * areaWidth * (0.16 + t * 0.08);
+      const alpha = (0.1 + t * 0.08) * windCurve * (weather.scene === "storm" ? 0.76 : 1);
+      const shine = alpha * (weather.scene === "storm" ? 0.12 : rainStrength > 0.02 ? 0.26 : 0.44);
+      const band = ctx.createLinearGradient(0, y - sheetHeight * 0.5, 0, y + sheetHeight * 0.5);
+
+      band.addColorStop(0, "rgba(8, 46, 22, 0)");
+      band.addColorStop(0.32, `rgba(6, 42, 20, ${alpha * 0.65})`);
+      band.addColorStop(0.52, `rgba(11, 58, 24, ${alpha})`);
+      band.addColorStop(0.64, `rgba(154, 210, 90, ${shine})`);
+      band.addColorStop(1, "rgba(154, 210, 90, 0)");
+
+      ctx.fillStyle = band;
+      ctx.beginPath();
+      ctx.moveTo(x - sheetWidth * 0.45, y - sheetHeight * 0.45);
+      ctx.bezierCurveTo(x - sheetWidth * 0.2 + lean, y - sheetHeight * 0.7, x + sheetWidth * 0.18 + lean, y + sheetHeight * 0.55, x + sheetWidth * 0.45, y + sheetHeight * 0.42);
+      ctx.lineTo(x + sheetWidth * 0.38, y + sheetHeight * 0.74);
+      ctx.bezierCurveTo(x + sheetWidth * 0.08 + lean, y + sheetHeight * 0.42, x - sheetWidth * 0.22 + lean, y - sheetHeight * 0.3, x - sheetWidth * 0.52, y - sheetHeight * 0.12);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.strokeStyle = `rgba(188, 232, 116, ${shine * 0.68})`;
+      ctx.lineWidth = Math.max(1, height * 0.0025);
+      ctx.beginPath();
+      ctx.moveTo(x - sheetWidth * 0.38, y - sheetHeight * 0.32);
+      ctx.bezierCurveTo(x - sheetWidth * 0.12 + lean, y - sheetHeight * 0.48, x + sheetWidth * 0.16 + lean, y + sheetHeight * 0.3, x + sheetWidth * 0.36, y + sheetHeight * 0.24);
+      ctx.stroke();
+      ctx.restore();
     }
 
     ctx.restore();
