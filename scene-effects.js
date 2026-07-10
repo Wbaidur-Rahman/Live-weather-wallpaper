@@ -95,8 +95,8 @@
     drawWeatherTint();
     drawWeatherShade("before");
     drawSunGlow(time);
-    drawStormCeiling(time);
     drawClouds(time);
+    drawStormCeiling(time);
     drawMist();
     drawFieldShimmer(time);
     drawDepthMist(time);
@@ -168,6 +168,7 @@
         heightScale: stormCloud ? 0.98 : nearRain ? 0.86 : midRain ? 0.8 : 0.72 + rng() * 0.14,
         speed: cloudSpeed,
         alpha: stormDark ? 0.96 : midStorm ? 0.84 : nearRain ? 0.9 : midRain ? 0.66 : mode === "cloudy" ? 0.66 + rng() * 0.16 : 0.58,
+        layer: stormDark || nearRain ? 2 : midStorm || midRain ? 1 : 0,
         phase: rng() * Math.PI * 2,
         flip: rng() > 0.5
       });
@@ -300,7 +301,8 @@
     const wind = getWindVector();
     const speedBase = 4 + clamp(weather.windSpeed, 1, 48) * 0.28;
 
-    for (const cloud of clouds) {
+    const orderedClouds = clouds.slice().sort((a, b) => a.layer - b.layer || a.y - b.y);
+    for (const cloud of orderedClouds) {
       const image = cloudImages[cloud.variant].get(cloud.assetId);
       if (!image || !image.complete || image.naturalWidth <= 0) continue;
 
@@ -806,15 +808,16 @@
       ctx.moveTo(childX, childY);
       ctx.quadraticCurveTo((childX + x) / 2 + windVector.x * radius * 0.16, (childY + y) / 2, x, y);
       ctx.stroke();
-      drawRoundGlassBead(childX, childY, drop.childRadius * (1 - childT * 0.38), 1.02, childAlpha);
+      drawRoundGlassBead(childX, childY, drop.childRadius * (1 - childT * 0.38), 1.02, childAlpha, 0);
     }
 
-    drawRoundGlassBead(x, y, radius, stretch, alpha);
+    const contactFlatness = clamp(sizeBoost * 0.36 + rainStrength * 0.08, 0, 0.5);
+    drawRoundGlassBead(x, y, radius, stretch, alpha, contactFlatness);
   }
 
-  function drawRoundGlassBead(x, y, radius, stretch, alpha) {
-    const rx = radius * (0.94 + (stretch - 1) * 0.08);
-    const ry = radius * stretch;
+  function drawRoundGlassBead(x, y, radius, stretch, alpha, flatness) {
+    const rx = radius * (0.94 + (stretch - 1) * 0.08 + flatness * 0.18);
+    const ry = radius * (stretch - flatness * 0.12);
     const fill = ctx.createRadialGradient(x - rx * 0.35, y - ry * 0.42, radius * 0.08, x, y, radius * 1.4);
     fill.addColorStop(0, `rgba(224, 241, 244, ${alpha * 0.78})`);
     fill.addColorStop(0.32, `rgba(122, 178, 190, ${alpha * 0.42})`);
@@ -822,13 +825,13 @@
     fill.addColorStop(1, `rgba(7, 22, 27, ${alpha * 0.5})`);
     ctx.fillStyle = fill;
     ctx.beginPath();
-    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    drawFlattenedBeadPath(x, y, rx, ry, flatness);
     ctx.fill();
 
     ctx.strokeStyle = `rgba(10, 30, 36, ${alpha * 0.42})`;
     ctx.lineWidth = Math.max(0.9, radius * 0.22);
     ctx.beginPath();
-    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    drawFlattenedBeadPath(x, y, rx, ry, flatness);
     ctx.stroke();
 
     ctx.strokeStyle = `rgba(220, 240, 244, ${alpha * 0.78})`;
@@ -844,6 +847,35 @@
     ctx.moveTo(x - rx * 0.42, y + ry * 0.32);
     ctx.quadraticCurveTo(x - rx * 0.08, y + ry * 0.62, x + rx * 0.34, y + ry * 0.46);
     ctx.stroke();
+
+    if (flatness > 0.04) {
+      ctx.strokeStyle = `rgba(7, 22, 27, ${alpha * 0.32 * flatness})`;
+      ctx.lineWidth = Math.max(0.8, radius * 0.18);
+      ctx.beginPath();
+      ctx.moveTo(x - rx * (0.46 + flatness * 0.1), y + ry * (0.5 + flatness * 0.16));
+      ctx.quadraticCurveTo(x, y + ry * (0.68 + flatness * 0.08), x + rx * (0.46 + flatness * 0.1), y + ry * (0.5 + flatness * 0.16));
+      ctx.stroke();
+    }
+  }
+
+  function drawFlattenedBeadPath(x, y, rx, ry, flatness) {
+    if (flatness <= 0.02) {
+      ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+      return;
+    }
+
+    const topY = y - ry;
+    const bottomY = y + ry * (0.72 - flatness * 0.08);
+    const sideY = y + ry * (0.18 + flatness * 0.08);
+    const bottomHalf = rx * (0.52 + flatness * 0.16);
+
+    ctx.moveTo(x, topY);
+    ctx.bezierCurveTo(x + rx * 0.72, topY, x + rx, y - ry * 0.2, x + rx * 0.92, sideY);
+    ctx.bezierCurveTo(x + rx * 0.84, y + ry * 0.54, x + bottomHalf, bottomY, x + bottomHalf * 0.68, bottomY);
+    ctx.quadraticCurveTo(x, bottomY + ry * 0.08 * flatness, x - bottomHalf * 0.68, bottomY);
+    ctx.bezierCurveTo(x - bottomHalf, bottomY, x - rx * 0.84, y + ry * 0.54, x - rx * 0.92, sideY);
+    ctx.bezierCurveTo(x - rx, y - ry * 0.2, x - rx * 0.72, topY, x, topY);
+    ctx.closePath();
   }
 
   function createGlassDrops() {
