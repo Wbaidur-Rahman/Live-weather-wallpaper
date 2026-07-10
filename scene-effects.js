@@ -435,6 +435,7 @@
     const gustStrength = weather.scene === "storm" ? 0.9 : weather.scene === "rain" ? 0.72 : 0.46;
 
     drawPaddyWindWaves(time, fieldTop, fieldHeight, wind, windVector, rainStrength);
+    drawJutePixelSway(time, fieldTop, fieldHeight, wind, windVector, rainStrength);
     drawJuteWindSheets(time, fieldTop, fieldHeight, wind, windVector, rainStrength);
     drawFieldGustBands(time, fieldTop, fieldHeight, wind, windVector, gustStrength);
     if (rainStrength > 0.02) {
@@ -575,6 +576,53 @@
       ctx.restore();
     }
 
+    ctx.restore();
+  }
+
+  function drawJutePixelSway(time, fieldTop, fieldHeight, wind, windVector, rainStrength) {
+    if (!fieldReady) return;
+
+    const crop = coverCrop(fieldImage.width, fieldImage.height, width, height);
+    const area = {
+      x: width * 0.64,
+      y: fieldTop + fieldHeight * 0.03,
+      w: width * 0.34,
+      h: fieldHeight * 0.46
+    };
+    const strips = 18;
+    const windCurve = clamp(wind / 26, 0.18, 1.9);
+    const direction = Math.sign(windVector.x || 1);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(area.x, area.y, area.w, area.h);
+    ctx.clip();
+    ctx.globalAlpha = weather.scene === "storm" ? 0.62 : rainStrength > 0.02 ? 0.66 : 0.7;
+
+    for (let i = 0; i < strips; i += 1) {
+      const t = i / Math.max(1, strips - 1);
+      const topWeight = 1 - t;
+      const dy = area.y + t * area.h;
+      const dh = area.h / strips + 2;
+      const sx = crop.sx + (area.x / width) * crop.sw;
+      const sy = crop.sy + (dy / height) * crop.sh;
+      const sw = (area.w / width) * crop.sw;
+      const sh = (dh / height) * crop.sh;
+      const bend = Math.pow(topWeight, 1.7) * (4 + wind * 0.72) * windCurve;
+      const wave = Math.sin(time * (0.9 + wind * 0.035) + i * 0.58) * (1.5 + wind * 0.14) * (0.25 + topWeight);
+      const gust = Math.sin(time * (0.38 + wind * 0.014) + i * 0.31) * (1.2 + wind * 0.09) * topWeight;
+      const dx = direction * bend + wave + gust;
+
+      ctx.drawImage(fieldImage, sx, sy, sw, sh, area.x + dx - 4, dy, area.w + 8, dh);
+    }
+
+    ctx.globalCompositeOperation = "multiply";
+    const shade = ctx.createLinearGradient(0, area.y, 0, area.y + area.h);
+    shade.addColorStop(0, `rgba(5, 34, 15, ${0.03 + windCurve * 0.04})`);
+    shade.addColorStop(0.6, `rgba(7, 45, 18, ${0.025 + windCurve * 0.035})`);
+    shade.addColorStop(1, "rgba(7, 45, 18, 0)");
+    ctx.fillStyle = shade;
+    ctx.fillRect(area.x, area.y, area.w, area.h);
     ctx.restore();
   }
 
