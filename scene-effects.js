@@ -3,6 +3,8 @@
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
+  const refractionCanvas = document.createElement("canvas");
+  const refractionCtx = refractionCanvas.getContext("2d", { alpha: true });
   const weather = {
     scene: "clear",
     windSpeed: 8,
@@ -78,6 +80,8 @@
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    refractionCanvas.width = width;
+    refractionCanvas.height = height;
 
     drops = createRainDrops();
     glassDrops = createGlassDrops();
@@ -741,6 +745,8 @@
     const paneAlpha = storm ? 0.1 : 0.052 + rainStrength * 0.038;
     const pane = ctx.createLinearGradient(0, 0, width, height);
 
+    captureRefractionScene();
+
     pane.addColorStop(0, `rgba(190, 216, 224, ${paneAlpha})`);
     pane.addColorStop(0.42, "rgba(190, 216, 224, 0)");
     pane.addColorStop(1, `rgba(150, 185, 190, ${paneAlpha * 0.45})`);
@@ -810,17 +816,19 @@
       ctx.moveTo(childX, childY);
       ctx.quadraticCurveTo((childX + x) / 2 + windVector.x * radius * 0.16, (childY + y) / 2, x, y);
       ctx.stroke();
-      drawRoundGlassBead(childX, childY, drop.childRadius * (1 - childT * 0.38), 1.02, childAlpha, 0);
+      drawRoundGlassBead(childX, childY, drop.childRadius * (1 - childT * 0.38), 1.02, childAlpha, 0, false);
     }
 
     const contactFlatness = clamp(sizeBoost * 0.36 + rainStrength * 0.08, 0, 0.5);
-    drawRoundGlassBead(x, y, radius, stretch, alpha, contactFlatness);
+    drawRoundGlassBead(x, y, radius, stretch, alpha, contactFlatness, radius > 4.2);
   }
 
-  function drawRoundGlassBead(x, y, radius, stretch, alpha, flatness) {
+  function drawRoundGlassBead(x, y, radius, stretch, alpha, flatness, refract) {
     const rx = radius * (0.94 + (stretch - 1) * 0.08 + flatness * 0.18);
     const ry = radius * (stretch - flatness * 0.12);
-    drawDropRefraction(x, y, rx, ry, flatness, alpha);
+    if (refract) {
+      drawDropRefraction(x, y, rx, ry, flatness, alpha);
+    }
 
     const fill = ctx.createRadialGradient(x - rx * 0.35, y - ry * 0.42, radius * 0.08, x, y, radius * 1.4);
     fill.addColorStop(0, `rgba(236, 249, 251, ${alpha * 0.34})`);
@@ -867,26 +875,35 @@
     }
   }
 
-  function drawDropRefraction(x, y, rx, ry, flatness, alpha) {
-    if (!fieldReady || !fieldImage || width <= 0 || height <= 0) return;
+  function captureRefractionScene() {
+    if (!refractionCtx || width <= 0 || height <= 0) return;
+    if (refractionCanvas.width !== width) refractionCanvas.width = width;
+    if (refractionCanvas.height !== height) refractionCanvas.height = height;
 
-    const crop = coverCrop(fieldImage.width, fieldImage.height, width, height);
-    const sampleW = Math.max(2, rx * 2.2);
-    const sampleH = Math.max(2, ry * 2.2);
-    const sourceScale = 0.72;
-    const lensOffsetX = rx * 0.18;
-    const lensOffsetY = -ry * 0.22;
-    const sx = crop.sx + clamp((x - sampleW * sourceScale * 0.5 + lensOffsetX) / width, 0, 1) * crop.sw;
-    const sy = crop.sy + clamp((y - sampleH * sourceScale * 0.5 + lensOffsetY) / height, 0, 1) * crop.sh;
-    const sw = Math.min(crop.sw, (sampleW * sourceScale / width) * crop.sw);
-    const sh = Math.min(crop.sh, (sampleH * sourceScale / height) * crop.sh);
+    refractionCtx.setTransform(1, 0, 0, 1, 0, 0);
+    refractionCtx.clearRect(0, 0, width, height);
+    refractionCtx.drawImage(canvas, 0, 0, width, height);
+  }
+
+  function drawDropRefraction(x, y, rx, ry, flatness, alpha) {
+    if (!refractionCtx || refractionCanvas.width <= 0 || refractionCanvas.height <= 0 || width <= 0 || height <= 0) return;
+
+    const sampleW = Math.max(2, rx * 2.35);
+    const sampleH = Math.max(2, ry * 2.35);
+    const sourceScale = 0.68;
+    const lensOffsetX = rx * 0.2;
+    const lensOffsetY = -ry * 0.18;
+    const sw = Math.min(width, sampleW * sourceScale);
+    const sh = Math.min(height, sampleH * sourceScale);
+    const sx = clamp(x - sw * 0.5 + lensOffsetX, 0, Math.max(0, width - sw));
+    const sy = clamp(y - sh * 0.5 + lensOffsetY, 0, Math.max(0, height - sh));
 
     ctx.save();
     ctx.beginPath();
     drawFlattenedBeadPath(x, y, rx, ry, flatness);
     ctx.clip();
-    ctx.globalAlpha = clamp(alpha * 0.42, 0.22, 0.48);
-    ctx.drawImage(fieldImage, sx, sy, sw, sh, x - rx * 1.08, y - ry * 1.08, rx * 2.16, ry * 2.16);
+    ctx.globalAlpha = clamp(alpha * 0.56, 0.34, 0.66);
+    ctx.drawImage(refractionCanvas, sx, sy, sw, sh, x - rx * 1.1, y - ry * 1.1, rx * 2.2, ry * 2.2);
 
     const caustic = ctx.createLinearGradient(x, y - ry, x, y + ry);
     caustic.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.08})`);
