@@ -757,7 +757,7 @@
   }
 
   function drawGlassDrop(drop, time, rainStrength, windVector, storm) {
-    const baseRadius = drop.radius * (storm ? 1.2 : 1 + rainStrength * 0.22);
+    const baseRadius = drop.radius * (storm ? 1.08 : 0.88 + rainStrength * 0.16);
     const sizeBoost = clamp((baseRadius - 3) / 8, 0, 1.4);
     const mergeCycle = (time * (0.1 + drop.mergeSpeed * 0.08) + drop.mergePhase) % 1;
     const mergeProgress = smoothstep(0.2, 0.82, mergeCycle);
@@ -774,21 +774,23 @@
     const alpha = (0.46 + drop.alpha * 0.42) * (storm ? 1.16 : 1);
 
     if (trailLength > radius * 1.4) {
-      const trail = ctx.createLinearGradient(x, y + radius * 0.4, x + windVector.x * radius * 0.55, y + trailLength);
+      const trailTopY = y - trailLength;
+      const trailTopX = x - windVector.x * radius * 0.55;
+      const trail = ctx.createLinearGradient(x, y - radius * 0.45, trailTopX, trailTopY);
       trail.addColorStop(0, `rgba(145, 188, 198, ${alpha * 0.34 * sizeBoost})`);
       trail.addColorStop(0.58, `rgba(55, 93, 102, ${alpha * 0.16 * sizeBoost})`);
       trail.addColorStop(1, "rgba(55, 93, 102, 0)");
       ctx.strokeStyle = trail;
       ctx.lineWidth = Math.max(1.1, radius * 0.32);
       ctx.beginPath();
-      ctx.moveTo(x, y + radius * 0.62);
+      ctx.moveTo(x, y - radius * 0.62);
       ctx.bezierCurveTo(
-        x + windVector.x * radius * 0.5,
-        y + trailLength * 0.3,
+        x - windVector.x * radius * 0.5,
+        y - trailLength * 0.3,
         x + Math.sin(drop.phase) * radius * 0.28,
-        y + trailLength * 0.68,
-        x + windVector.x * radius * 0.24,
-        y + trailLength
+        y - trailLength * 0.68,
+        trailTopX,
+        trailTopY
       );
       ctx.stroke();
     }
@@ -923,7 +925,7 @@
       result.push({
         x: rng() * width,
         y: rng() * height,
-        radius: 2.8 + rng() * 8.8,
+        radius: 1.8 + rng() * 6.4,
         stretch: rng(),
         trail: height * (0.025 + rng() * 0.095),
         speed: 0.45 + rng() * 0.85,
@@ -934,7 +936,7 @@
         mergeSpeed: rng(),
         mergeOffsetX: (rng() - 0.5) * 3.6,
         mergeOffsetY: -1.2 - rng() * 2.4,
-        childRadius: rng() > 0.28 ? 1.4 + rng() * 2.4 : 0
+        childRadius: rng() > 0.28 ? 0.9 + rng() * 1.9 : 0
       });
     }
     return result;
