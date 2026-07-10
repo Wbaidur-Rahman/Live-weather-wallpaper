@@ -443,31 +443,33 @@
   }
 
   function drawPaddyWindWaves(time, fieldTop, fieldHeight, wind, windVector, rainStrength) {
-    const windCurve = clamp(wind / 32, 0.12, 1.55);
-    const waveCount = weather.scene === "storm" ? 9 : weather.scene === "rain" ? 8 : 7;
+    const windCurve = clamp(wind / 28, 0.18, 1.8);
+    const waveCount = weather.scene === "storm" ? 12 : weather.scene === "rain" ? 11 : 10;
     const direction = Math.sign(windVector.x || 1);
-    const travel = width * 1.45;
+    const travel = width * 1.65;
 
     ctx.save();
-    ctx.globalCompositeOperation = weather.scene === "storm" ? "multiply" : "soft-light";
+    ctx.globalCompositeOperation = "source-over";
 
     for (let i = 0; i < waveCount; i += 1) {
       const t = i / Math.max(1, waveCount - 1);
       const closeBoost = t * t;
-      const y = fieldTop + fieldHeight * (0.1 + t * 0.86) + Math.sin(time * (0.45 + windCurve * 0.22) + i * 1.3) * height * (0.004 + closeBoost * 0.012);
-      const waveHeight = height * (0.034 + closeBoost * 0.052);
-      const waveWidth = width * (0.52 + closeBoost * 0.28);
-      const speed = (0.024 + wind * 0.0028) * (0.72 + closeBoost * 1.45);
+      const y = fieldTop + fieldHeight * (0.08 + t * 0.88) + Math.sin(time * (0.5 + windCurve * 0.28) + i * 1.3) * height * (0.006 + closeBoost * 0.016);
+      const waveHeight = height * (0.046 + closeBoost * 0.07);
+      const waveWidth = width * (0.62 + closeBoost * 0.34);
+      const speed = (0.03 + wind * 0.0035) * (0.78 + closeBoost * 1.7);
       const x = wrap(width * (i * 0.21) + direction * time * speed * travel, -waveWidth, width + waveWidth);
-      const lean = windVector.x * width * (0.08 + closeBoost * 0.08);
-      const alpha = (0.045 + closeBoost * 0.07) * windCurve * (weather.scene === "storm" ? 0.75 : 1);
-      const shineAlpha = alpha * (weather.scene === "storm" ? 0.16 : rainStrength > 0.02 ? 0.3 : 0.48);
+      const lean = windVector.x * width * (0.1 + closeBoost * 0.1);
+      const alpha = (0.09 + closeBoost * 0.13) * windCurve * (weather.scene === "storm" ? 0.86 : 1);
+      const shineAlpha = alpha * (weather.scene === "storm" ? 0.18 : rainStrength > 0.02 ? 0.38 : 0.62);
 
       const shade = ctx.createLinearGradient(0, y - waveHeight, 0, y + waveHeight);
       shade.addColorStop(0, "rgba(7, 38, 16, 0)");
-      shade.addColorStop(0.42, `rgba(9, 50, 18, ${alpha})`);
-      shade.addColorStop(0.56, `rgba(185, 225, 95, ${shineAlpha})`);
-      shade.addColorStop(1, "rgba(185, 225, 95, 0)");
+      shade.addColorStop(0.34, `rgba(7, 44, 15, ${alpha * 0.72})`);
+      shade.addColorStop(0.48, `rgba(12, 56, 20, ${alpha})`);
+      shade.addColorStop(0.58, `rgba(205, 238, 118, ${shineAlpha})`);
+      shade.addColorStop(0.78, `rgba(65, 112, 34, ${alpha * 0.28})`);
+      shade.addColorStop(1, "rgba(205, 238, 118, 0)");
 
       ctx.fillStyle = shade;
       ctx.beginPath();
@@ -491,6 +493,23 @@
       );
       ctx.closePath();
       ctx.fill();
+
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.strokeStyle = `rgba(218, 247, 130, ${shineAlpha * 0.72})`;
+      ctx.lineWidth = Math.max(1, height * (0.001 + closeBoost * 0.002));
+      ctx.beginPath();
+      ctx.moveTo(x - waveWidth * 0.42, y - waveHeight * 0.1);
+      ctx.bezierCurveTo(
+        x - waveWidth * 0.14 + lean,
+        y - waveHeight * 0.72,
+        x + waveWidth * 0.16 + lean,
+        y + waveHeight * 0.46,
+        x + waveWidth * 0.42,
+        y + waveHeight * 0.08
+      );
+      ctx.stroke();
+      ctx.restore();
 
       if (x < waveWidth * 0.15) {
         drawPaddyWaveCopy(x + width + waveWidth * 0.25, y, waveWidth, waveHeight, lean, shade);
