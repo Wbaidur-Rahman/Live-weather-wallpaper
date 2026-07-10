@@ -755,69 +755,94 @@
   }
 
   function drawGlassDrop(drop, time, rainStrength, windVector, storm) {
-    const speed = (storm ? 18 : 9) + rainStrength * 42;
+    const baseRadius = drop.radius * (storm ? 1.2 : 1 + rainStrength * 0.22);
+    const sizeBoost = clamp((baseRadius - 3) / 8, 0, 1.4);
+    const mergeCycle = (time * (0.1 + drop.mergeSpeed * 0.08) + drop.mergePhase) % 1;
+    const mergeProgress = smoothstep(0.2, 0.82, mergeCycle);
+    const merging = drop.childRadius > 0 && mergeCycle > 0.16 && mergeCycle < 0.92;
+    const mergedBoost = merging ? smoothstep(0.62, 0.88, mergeCycle) * drop.childRadius * 0.36 : 0;
+    const radius = baseRadius + mergedBoost;
+    const speed = ((storm ? 7 : 3.2) + rainStrength * 12) * (0.38 + sizeBoost * 1.45);
     const slide = time * speed * drop.speed;
-    const wiggle = Math.sin(time * (0.7 + drop.wiggle * 0.35) + drop.phase) * drop.radius * 0.32;
+    const wiggle = Math.sin(time * (0.45 + drop.wiggle * 0.22) + drop.phase) * radius * 0.18;
     const x = wrap(drop.x + windVector.x * slide * 0.32 + wiggle, -drop.radius * 4, width + drop.radius * 4);
     const y = wrap(drop.y + slide, -height * 0.2, height + drop.trail + drop.radius * 4);
-    const radius = drop.radius * (storm ? 1.28 : 1.05 + rainStrength * 0.32);
-    const stretch = 1.58 + drop.stretch * 1.35 + rainStrength * 1.0;
-    const trailLength = drop.trail * (0.7 + rainStrength * 0.9);
+    const stretch = 1.02 + drop.stretch * 0.18 + rainStrength * 0.12 + sizeBoost * 0.1;
+    const trailLength = drop.trail * (0.45 + rainStrength * 0.6) * (0.45 + sizeBoost);
     const alpha = (0.34 + drop.alpha * 0.38) * (storm ? 1.14 : 1);
 
-    const trail = ctx.createLinearGradient(x, y - radius, x + windVector.x * radius * 0.8, y + trailLength);
-    trail.addColorStop(0, `rgba(176, 212, 220, ${alpha * 0.34})`);
-    trail.addColorStop(0.55, `rgba(112, 150, 158, ${alpha * 0.14})`);
-    trail.addColorStop(1, "rgba(152, 184, 190, 0)");
-    ctx.strokeStyle = trail;
-    ctx.lineWidth = Math.max(1.1, radius * 0.42);
-    ctx.beginPath();
-    ctx.moveTo(x, y + radius * 0.4);
-    ctx.bezierCurveTo(
-      x + windVector.x * radius * 0.7,
-      y + trailLength * 0.28,
-      x + Math.sin(drop.phase) * radius * 0.42,
-      y + trailLength * 0.68,
-      x + windVector.x * radius * 0.3,
-      y + trailLength
-    );
-    ctx.stroke();
+    if (trailLength > radius * 1.4) {
+      const trail = ctx.createLinearGradient(x, y + radius * 0.4, x + windVector.x * radius * 0.55, y + trailLength);
+      trail.addColorStop(0, `rgba(154, 190, 198, ${alpha * 0.22 * sizeBoost})`);
+      trail.addColorStop(0.62, `rgba(83, 116, 123, ${alpha * 0.1 * sizeBoost})`);
+      trail.addColorStop(1, "rgba(83, 116, 123, 0)");
+      ctx.strokeStyle = trail;
+      ctx.lineWidth = Math.max(0.9, radius * 0.24);
+      ctx.beginPath();
+      ctx.moveTo(x, y + radius * 0.62);
+      ctx.bezierCurveTo(
+        x + windVector.x * radius * 0.5,
+        y + trailLength * 0.3,
+        x + Math.sin(drop.phase) * radius * 0.28,
+        y + trailLength * 0.68,
+        x + windVector.x * radius * 0.24,
+        y + trailLength
+      );
+      ctx.stroke();
+    }
 
-    ctx.strokeStyle = `rgba(30, 52, 56, ${alpha * 0.18})`;
-    ctx.lineWidth = Math.max(0.8, radius * 0.2);
-    ctx.beginPath();
-    ctx.moveTo(x + radius * 0.22, y + radius * stretch * 0.12);
-    ctx.quadraticCurveTo(x + radius * 0.54, y + radius * stretch * 0.46, x + radius * 0.18, y + radius * stretch * 0.78);
-    ctx.stroke();
+    if (merging && drop.childRadius > 1.2) {
+      const childT = mergeProgress;
+      const childAlpha = alpha * (1 - smoothstep(0.72, 0.92, mergeCycle)) * 0.8;
+      const startX = x + drop.mergeOffsetX * radius;
+      const startY = y + drop.mergeOffsetY * radius;
+      const childX = startX + (x - startX) * childT;
+      const childY = startY + (y - startY) * childT;
+      const neckAlpha = childAlpha * smoothstep(0.28, 0.72, mergeCycle);
 
-    const fill = ctx.createRadialGradient(x - radius * 0.34, y - radius * 0.45, radius * 0.1, x, y, radius * 1.45);
-    fill.addColorStop(0, `rgba(224, 241, 244, ${alpha * 0.7})`);
-    fill.addColorStop(0.34, `rgba(164, 202, 210, ${alpha * 0.28})`);
-    fill.addColorStop(0.78, `rgba(72, 102, 106, ${alpha * 0.16})`);
-    fill.addColorStop(1, `rgba(16, 34, 38, ${alpha * 0.32})`);
+      ctx.strokeStyle = `rgba(135, 174, 182, ${neckAlpha * 0.32})`;
+      ctx.lineWidth = Math.max(0.8, drop.childRadius * 0.34);
+      ctx.beginPath();
+      ctx.moveTo(childX, childY);
+      ctx.quadraticCurveTo((childX + x) / 2 + windVector.x * radius * 0.16, (childY + y) / 2, x, y);
+      ctx.stroke();
+      drawRoundGlassBead(childX, childY, drop.childRadius * (1 - childT * 0.38), 1.02, childAlpha);
+    }
+
+    drawRoundGlassBead(x, y, radius, stretch, alpha);
+  }
+
+  function drawRoundGlassBead(x, y, radius, stretch, alpha) {
+    const rx = radius * (0.94 + (stretch - 1) * 0.08);
+    const ry = radius * stretch;
+    const fill = ctx.createRadialGradient(x - rx * 0.35, y - ry * 0.42, radius * 0.08, x, y, radius * 1.4);
+    fill.addColorStop(0, `rgba(224, 241, 244, ${alpha * 0.68})`);
+    fill.addColorStop(0.34, `rgba(154, 196, 205, ${alpha * 0.3})`);
+    fill.addColorStop(0.76, `rgba(74, 104, 110, ${alpha * 0.18})`);
+    fill.addColorStop(1, `rgba(15, 31, 35, ${alpha * 0.34})`);
     ctx.fillStyle = fill;
     ctx.beginPath();
-    ctx.ellipse(x, y, radius * (0.68 + drop.stretch * 0.18), radius * stretch, windVector.x * 0.08, 0, Math.PI * 2);
+    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = `rgba(178, 210, 216, ${alpha * 0.46})`;
-    ctx.lineWidth = Math.max(0.8, radius * 0.18);
+    ctx.strokeStyle = `rgba(30, 52, 56, ${alpha * 0.24})`;
+    ctx.lineWidth = Math.max(0.8, radius * 0.16);
     ctx.beginPath();
-    ctx.ellipse(x, y, radius * (0.72 + drop.stretch * 0.18), radius * stretch, windVector.x * 0.08, 0, Math.PI * 2);
+    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.strokeStyle = `rgba(232, 244, 246, ${alpha * 0.7})`;
-    ctx.lineWidth = Math.max(0.9, radius * 0.18);
+    ctx.strokeStyle = `rgba(229, 243, 246, ${alpha * 0.68})`;
+    ctx.lineWidth = Math.max(0.8, radius * 0.16);
     ctx.beginPath();
-    ctx.moveTo(x - radius * 0.28, y - radius * stretch * 0.45);
-    ctx.quadraticCurveTo(x - radius * 0.05, y - radius * stretch * 0.75, x + radius * 0.24, y - radius * stretch * 0.5);
+    ctx.moveTo(x - rx * 0.34, y - ry * 0.36);
+    ctx.quadraticCurveTo(x - rx * 0.08, y - ry * 0.62, x + rx * 0.26, y - ry * 0.36);
     ctx.stroke();
 
-    ctx.strokeStyle = `rgba(118, 150, 156, ${alpha * 0.3})`;
-    ctx.lineWidth = Math.max(0.7, radius * 0.11);
+    ctx.strokeStyle = `rgba(95, 128, 135, ${alpha * 0.26})`;
+    ctx.lineWidth = Math.max(0.7, radius * 0.1);
     ctx.beginPath();
-    ctx.moveTo(x - radius * 0.42, y + radius * stretch * 0.35);
-    ctx.quadraticCurveTo(x - radius * 0.12, y + radius * stretch * 0.74, x + radius * 0.34, y + radius * stretch * 0.54);
+    ctx.moveTo(x - rx * 0.42, y + ry * 0.32);
+    ctx.quadraticCurveTo(x - rx * 0.08, y + ry * 0.62, x + rx * 0.34, y + ry * 0.46);
     ctx.stroke();
   }
 
@@ -828,13 +853,18 @@
       result.push({
         x: rng() * width,
         y: rng() * height,
-        radius: 3.2 + rng() * 6.8,
+        radius: 2.6 + rng() * 7.8,
         stretch: rng(),
-        trail: height * (0.035 + rng() * 0.12),
-        speed: 0.35 + rng() * 1.15,
+        trail: height * (0.025 + rng() * 0.095),
+        speed: 0.45 + rng() * 0.85,
         alpha: rng(),
         wiggle: rng(),
-        phase: rng() * Math.PI * 2
+        phase: rng() * Math.PI * 2,
+        mergePhase: rng(),
+        mergeSpeed: rng(),
+        mergeOffsetX: (rng() - 0.5) * 3.6,
+        mergeOffsetY: -1.2 - rng() * 2.4,
+        childRadius: rng() > 0.28 ? 1.4 + rng() * 2.4 : 0
       });
     }
     return result;
@@ -886,6 +916,11 @@
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
+  }
+
+  function smoothstep(edge0, edge1, value) {
+    const t = clamp((value - edge0) / (edge1 - edge0), 0, 1);
+    return t * t * (3 - 2 * t);
   }
 
   function random(seed) {
